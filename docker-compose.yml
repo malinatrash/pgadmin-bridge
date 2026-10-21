@@ -1,0 +1,21 @@
+services:
+  pgproxy:
+    build: .
+    image: pgproxy:local
+    ports:
+      # both listeners are published on the host's loopback only
+      - "127.0.0.1:${PGPROXY_PORT:-5432}:5432"
+      - "127.0.0.1:${PGPROXY_WEB_PORT:-8080}:8080"
+    volumes:
+      - pgproxy-data:/data
+    environment:
+      TZ: "${TZ:-UTC}"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+volumes:
+  pgproxy-data:
