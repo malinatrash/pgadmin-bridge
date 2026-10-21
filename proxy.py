@@ -8,8 +8,9 @@ import struct
 import threading
 import time
 
+from extended import BINARY, ProtocolError, column_oid, encode, substitute
 from log import log
-from pgadmin import ApiError, Lost, PgAdmin, _items
+from pgadmin import ApiError, Lost, PgAdmin
 
 NULL = b"\x00"
 TX = {2: b"T", 3: b"E"}
@@ -162,45 +163,119 @@ class Conn(socketserver.BaseRequestHandler):
             pass
 
     def loop(self):
-        skip = False
+        """Simple protocol (Q) streams rows; extended (P/B/D/E/C/H/S) runs at Describe/Execute and buffers them."""
+        self.stmts, self.portals, failed = {}, {}, False
         while True:
             kind, body = self.w.message()
             if kind == b"X":
                 return
-            if kind == b"Q":
+            if kind == b"S":
+                failed = False
+                self.w.ready(self.tx)
+            elif kind == b"Q":
                 with self.lock:
                     self.query(body.rstrip(NULL).decode("utf-8", "replace"))
                 self.w.ready(self.tx)
-            elif kind == b"S":
-                skip = False
-                self.w.ready(self.tx)
-            elif not skip:
-                skip = True
-                self.w.error(_error("extended query protocol is not supported: set preferQueryMode=simple", "0A000"))
+            elif failed or kind == b"H":
+                continue
+            else:
+                try:
+                    with self.lock:
+                        self.extended(kind, body)
+                except Lost:
+                    raise
+                except (ApiError, ProtocolError, ValueError, KeyError, struct.error) as e:
+                    failed = True
+                    self.w.error(_error(str(e), None if isinstance(e, ApiError) else "08P01"))
 
     def query(self, sql):
         if not sql.strip():
             return self.w.send(b"I")
-        start = time.monotonic()
         try:
-            d = self.run(sql)
-            if d.get("additional_messages"):
-                self.w.error(_error(d["additional_messages"], "00000", "NOTICE"), b"N")
-            if d.get("colinfo") is not None:
-                self.w.columns(d["colinfo"])
-            n = self.stream(d)
+            d = self.execute(sql)
+            fmts = [0] * len(d["colinfo"] or [])
+            if d["colinfo"] is not None:
+                self.w.columns(d["colinfo"], fmts)
+            self.w.rows(d["rows"], d["colinfo"], fmts)
         except Lost:
             raise
         except ApiError as e:
-            err = _error(str(e))
-            log(f"{self.name} {_ms(start)} ERROR {err['C']} | {_oneline(sql)}")
-            return self.w.error(err)
+            return self.w.error(_error(str(e)))
+        self.w.send(b"C", d["tag"].encode() + NULL)
+
+    def extended(self, kind, body):
+        w = self.w
+        if kind == b"P":
+            name, _, rest = body.partition(NULL)
+            sql, _, rest = rest.partition(NULL)
+            n = struct.unpack("!h", rest[:2])[0]
+            self.stmts[name.decode()] = (sql.decode("utf-8", "replace"), list(struct.unpack(f"!{n}I", rest[2:2 + 4 * n])))
+            w.send(b"1")
+        elif kind == b"B":
+            portal, _, rest = body.partition(NULL)
+            stmt, _, rest = rest.partition(NULL)
+            sql, oids = self.stmts[stmt.decode()]
+            params, rfmts = _bind(rest)
+            self.portals[portal.decode()] = {"sql": substitute(sql, params, oids), "rfmts": rfmts, "result": None, "sent": 0}
+            w.send(b"2")
+        elif kind == b"D":
+            name = body[1:].partition(NULL)[0].decode()
+            if body[:1] == b"S":
+                oids = self.stmts[name][1]
+                w.send(b"t", struct.pack("!h", len(oids)) + b"".join(struct.pack("!I", o or 25) for o in oids))
+                w.send(b"n")
+            else:
+                d = self.portal(name)
+                w.send(b"n") if d["colinfo"] is None else w.columns(d["colinfo"], d["fmts"])
+        elif kind == b"E":
+            name, _, rest = body.partition(NULL)
+            name, maxrows = name.decode(), struct.unpack("!i", rest[:4])[0]
+            d = self.portal(name)
+            if d["tag"] is None:
+                return w.send(b"I")
+            p = self.portals[name]
+            chunk = d["rows"][p["sent"]:p["sent"] + maxrows] if maxrows > 0 else d["rows"][p["sent"]:]
+            w.rows(chunk, d["colinfo"], d["fmts"])
+            p["sent"] += len(chunk)
+            w.send(b"s") if p["sent"] < len(d["rows"]) else w.send(b"C", d["tag"].encode() + NULL)
+        elif kind == b"C":
+            (self.stmts if body[:1] == b"S" else self.portals).pop(body[1:].partition(NULL)[0].decode(), None)
+            w.send(b"3")
+        else:
+            raise ProtocolError(f"unsupported message type {kind!r}")
+
+    def portal(self, name):
+        """Runs the portal's SQL once; -> result with the column formats the client asked for."""
+        p = self.portals[name]
+        if p["result"] is None:
+            if not p["sql"].strip():
+                p["result"] = {"colinfo": None, "rows": [], "tag": None, "fmts": []}
+            else:
+                d, rf = self.execute(p["sql"]), p["rfmts"]
+                d["fmts"] = []
+                for i, c in enumerate(d["colinfo"] or []):
+                    want = rf[i] if len(rf) > 1 else (rf[0] if rf else 0)
+                    d["fmts"].append(1 if want and column_oid(c.get("type_code")) in BINARY else 0)
+                p["result"] = d
+        return p["result"]
+
+    def execute(self, sql):
+        """Runs SQL, forwards NOTICEs, collects all rows; -> {colinfo, rows, tag}. Logs the outcome."""
+        start = time.monotonic()
+        try:
+            d = self.run(sql)
+        except ApiError as e:
+            log(f"{self.name} {_ms(start)} ERROR {_error(str(e))['C']} | {_oneline(sql)}")
+            raise
+        if d.get("additional_messages"):
+            self.w.error(_error(d["additional_messages"], "00000", "NOTICE"), b"N")
+        rows = list(self.fetch(d))
         status = d["result"] if isinstance(d.get("result"), str) else ""
-        tag = (status.strip().splitlines() or [f"SELECT {n}"])[-1]
+        tag = (status.strip().splitlines() or [f"SELECT {len(rows)}"])[-1]
         log(f"{self.name} {_ms(start)} {tag} | {_oneline(sql)}")
-        self.w.send(b"C", tag.encode() + NULL)
         if tag == "SET" and self.tx == b"I" and not re.match(r"\s*set\s+(local|transaction|session\s+char)", sql, re.I):
             self.sets = [s for s in self.sets if _setvar(s) != _setvar(sql)] + [sql]
+        return {"colinfo": d.get("colinfo"), "rows": rows, "tag": tag}
 
     def run(self, sql):
         """Runs SQL in the Query Tool (opening one if released) and waits; -> data of pgAdmin's poll."""
@@ -228,14 +303,13 @@ class Conn(socketserver.BaseRequestHandler):
             raise Lost(f"pgAdmin: {d.get('status')}: {d.get('result')}")
         return d
 
-    def stream(self, d):
-        """Sends rows to the client batch by batch as pgAdmin hands them out; -> row count."""
-        n, batch, more = 0, _rows(d.get("result")), d.get("has_more_rows")
+    def fetch(self, d):
+        """Yields rows as pgAdmin hands them out, chunk by chunk."""
+        batch, more = _rows(d.get("result")), d.get("has_more_rows")
         while True:
-            self.w.rows(batch)
-            n += len(batch)
+            yield from batch
             if not more:
-                return n
+                return
             f = self.pg.call("GET", f"/sqleditor/fetch/{self.tid}")["data"]
             batch = _rows(f.get("result"))
             more = bool(batch) and f.get("has_more_rows")
@@ -303,22 +377,26 @@ class Wire:
         self.send(b"K", struct.pack("!ii", *key))
         self.ready(b"I")
 
-    def columns(self, colinfo):
+    def columns(self, colinfo, fmts):
         body = struct.pack("!h", len(colinfo))
-        for c in colinfo:
+        for c, fmt in zip(colinfo, fmts):
             name = c.get("display_name") or c["name"]
             body += name.encode() + NULL + struct.pack(
-                "!IhIhih", c.get("table_oid") or 0, c.get("table_column") or 0, c.get("type_code") or 25, -1, -1, 0)
+                "!IhIhih", c.get("table_oid") or 0, c.get("table_column") or 0, column_oid(c.get("type_code")), -1, -1, fmt)
         self.send(b"T", body)
 
-    def rows(self, batch):
+    def rows(self, batch, colinfo, fmts):
+        oids = [column_oid(c.get("type_code")) for c in colinfo or []]
         out = []
         for values in batch:
             body = struct.pack("!h", len(values))
-            for v in values:
-                b = _text(v)
+            for v, oid, fmt in zip(values, oids, fmts):
+                b = None if v is None else encode(v, oid) if fmt else _text(v)
                 body += struct.pack("!i", -1) if b is None else struct.pack("!i", len(b)) + b
             out.append(b"D" + struct.pack("!i", len(body) + 4) + body)
+            if len(out) >= 500:
+                self.sock.sendall(b"".join(out))
+                out = []
         self.sock.sendall(b"".join(out))
 
     def error(self, fields, kind=b"E"):
@@ -334,6 +412,22 @@ def _same(pg, inst):
 
 def _rows(result):
     return result if isinstance(result, list) else []
+
+
+def _bind(raw):
+    """Body of Bind after the two names -> ([(format, value|None)], result formats)."""
+    n = struct.unpack("!h", raw[:2])[0]
+    pfmts, pos = list(struct.unpack(f"!{n}h", raw[2:2 + 2 * n])), 2 + 2 * n
+    count = struct.unpack("!h", raw[pos:pos + 2])[0]
+    pos, params = pos + 2, []
+    for i in range(count):
+        size = struct.unpack("!i", raw[pos:pos + 4])[0]
+        pos += 4
+        value = None if size < 0 else raw[pos:pos + size]
+        pos += max(size, 0)
+        params.append(((pfmts[i] if n > 1 else pfmts[0]) if pfmts else 0, value))
+    m = struct.unpack("!h", raw[pos:pos + 2])[0]
+    return params, list(struct.unpack(f"!{m}h", raw[pos + 2:pos + 2 + 2 * m]))
 
 
 def _text(v):

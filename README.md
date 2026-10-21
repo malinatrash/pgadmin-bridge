@@ -48,15 +48,16 @@ python3 main.py --port 5432 --web-port 8080     # data in ./data
 | Password | the proxy password from the web UI                                   |
 | SSL      | off (`sslmode=disable`)                                              |
 
-Only the **simple query protocol** is supported. In JDBC drivers (DataGrip, DBeaver)
-set `preferQueryMode=simple`; psql uses it already.
+Both the simple and the extended query protocol work, so JDBC drivers need no special
+settings: parameters are substituted into the SQL text by the proxy (pgAdmin only takes
+text), and the binary result formats JDBC asks for are produced for the common types.
 
 ```bash
 psql "host=127.0.0.1 port=5432 user=prod-main dbname=app sslmode=disable"
 ```
 
-DataGrip tips: one data source per pgAdmin server, `preferQueryMode=simple` on the
-Advanced tab, select only the schemas you need, and tick *Read-only* for production.
+DataGrip tips: one data source per pgAdmin server, select only the schemas you need,
+and tick *Read-only* for production.
 
 ## What the web UI shows
 
@@ -84,7 +85,8 @@ concurrently.
 Limitations:
 
 - A batch with several statements returns the result of the last one (pgAdmin's behaviour).
-- No `COPY`, no extended protocol, no SSL between client and proxy (it only listens on loopback).
+- Parameters are inlined as literals, so a statement is planned per execution; `COPY` and
+  SSL between client and proxy are not supported (it only listens on loopback).
 - Query latency is two HTTP round trips to pgAdmin per statement.
 
 ## Security notes

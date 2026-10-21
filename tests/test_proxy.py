@@ -99,12 +99,12 @@ class Client:
         self.s.close()
 
 
-class ProxyTest(unittest.TestCase):
+class Base(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.fake = Fake(SERVERS)
         cfg = dict(config.DEFAULT, password="pw", timeout=300, idle=600, instances=[
-            {"name": "test", "url": cls.fake.url, "email": "admin@example.com", "password": "secret", "verify_tls": True}])
+            {"name": cls.__name__, "url": cls.fake.url, "email": "admin@example.com", "password": "secret", "verify_tls": True}])
         cls.srv = proxy.Server(("127.0.0.1", 0), cfg, config.DATA)
         cls.port = cls.srv.server_address[1]
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
@@ -114,7 +114,19 @@ class ProxyTest(unittest.TestCase):
 
     def connect(self, user="main", db="app", password="pw"):
         return Client(self.port, user, db, password)
+    def http(self, path, body=None):
+        req = urllib.request.Request(f"http://127.0.0.1:{self.ui_port}{path}", method="POST" if body else "GET",
+                                     data=json.dumps(body).encode() if body else None,
+                                     headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req) as r:
+                raw = r.read()
+        except urllib.error.HTTPError as e:
+            raw = e.read()
+        return json.loads(raw) if path.startswith("/api") else raw.decode()
 
+
+class ProxyTest(Base):
     def test_login_and_parameters(self):
         c = self.connect()
         self.assertEqual(c.params["server_version"], "16.4")
@@ -141,9 +153,9 @@ class ProxyTest(unittest.TestCase):
         self.assertEqual(c.query("rollback")[1], "I")
         c.close()
 
-    def test_extended_protocol_is_rejected_once(self):
+    def test_function_call_is_rejected(self):
         c = self.connect()
-        c.s.sendall(pack(b"P", b"\0select 1\0\0\0") + pack(b"B", b"\0\0" + b"\0" * 6) + pack(b"E", b"\0" * 5) + pack(b"S", b""))
+        c.s.sendall(pack(b"F", b"\0" * 10) + pack(b"S", b""))
         kinds = "".join(k.decode() for k, _ in c.until_ready())
         self.assertEqual(kinds, "EZ")
         self.assertEqual(c.query("select 1")[0], "TDDCZ")
@@ -155,8 +167,8 @@ class ProxyTest(unittest.TestCase):
         self.assertEqual(e.exception.args[0]["C"], "28P01")
         with self.assertRaises(ConnectionError) as e:
             self.connect(user="missing")
-        self.assertIn("test/main", e.exception.args[0]["M"])
-        c = self.connect(user="test/other", db="")
+        self.assertIn("proxytest/main", e.exception.args[0]["M"])
+        c = self.connect(user="ProxyTest/other", db="")
         self.assertIn(("POST", "/browser/server/connect/1/8", {}), self.fake.calls)
         c.close()
 
@@ -178,7 +190,7 @@ class ProxyTest(unittest.TestCase):
     def test_web_ui_state_save_and_test(self):
         state = self.http("/api/state")
         self.assertEqual(state["config"]["password"], web.MASK)
-        self.assertIn("test/main", state["servers"])
+        self.assertIn("ProxyTest/main", state["servers"])
         cfg = dict(state["config"], timeout=5)
         saved = self.http("/api/config", cfg)
         self.assertEqual(saved["config"]["timeout"], 5)
@@ -188,17 +200,6 @@ class ProxyTest(unittest.TestCase):
         self.assertIn("login rejected", r["error"])
         self.assertEqual(self.http("/api/test", cfg["instances"][0])["servers"], ["main", "other"])
         self.assertIn("<title>pgproxy</title>", self.http("/"))
-
-    def http(self, path, body=None):
-        req = urllib.request.Request(f"http://127.0.0.1:{self.ui_port}{path}", method="POST" if body else "GET",
-                                     data=json.dumps(body).encode() if body else None,
-                                     headers={"Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(req) as r:
-                raw = r.read()
-        except urllib.error.HTTPError as e:
-            raw = e.read()
-        return json.loads(raw) if path.startswith("/api") else raw.decode()
 
     @unittest.skipUnless(shutil.which("psql"), "psql not installed")
     def test_psql(self):

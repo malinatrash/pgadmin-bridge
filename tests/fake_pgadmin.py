@@ -96,6 +96,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         def col(name, oid, **kw):
             return dict({"name": name, "type_code": oid, "table_oid": None, "table_column": None}, **kw)
 
+        if sql.startswith("echo "):
+            return ok(colinfo=[col("sql", 25)], result=[[tool["sql"]]])
+        if sql.startswith("select typed"):
+            return ok(colinfo=[col("i", 23), col("b", 20), col("f", 701), col("ok", 16), col("n", 1700), col("d", 1082),
+                               col("ts", 1184), col("u", 2950), col("arr", 1007)],
+                      result=[[7, 9007199254740993, 1.5, True, "-123.4500", "2024-02-29", "2026-10-21 12:00:00.5+05",
+                               "123e4567-e89b-12d3-a456-426614174000", "{1,2}"]])
         if sql.startswith("select current_database()"):
             return ok(colinfo=[col(f"c{i}", 25) for i in range(7)], result=[[tool["db"]] + SETTINGS])
         if sql.startswith("set "):
