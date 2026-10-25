@@ -5,6 +5,11 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Clients could not connect when the bridge started less than a minute after the machine booted
+  (fresh VMs and containers): the first lookup skipped scanning the pgAdmin server trees.
+
 ## [1.0.0] - 2026-10-25
 
 First public release as **pgadmin-bridge** (previously developed as `pgproxy`).

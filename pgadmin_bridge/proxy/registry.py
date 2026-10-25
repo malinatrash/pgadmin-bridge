@@ -5,20 +5,22 @@ from ..log import log
 from ..pgadmin import ApiError, PgAdmin
 
 AMBIGUOUS = "ambiguous"
+NEVER = float("-inf")
 
 
 class Registry:
     """Maps a client's User ('server' or 'instance/server') to a pgAdmin client and server node."""
 
     def __init__(self, cookie_dir):
-        self.cookie_dir, self.pgs, self.nodes, self.scanned = cookie_dir, {}, {}, 0
+        # "never scanned" must be long ago even on a machine booted less than a minute ago (monotonic ~ uptime)
+        self.cookie_dir, self.pgs, self.nodes, self.scanned = cookie_dir, {}, {}, NEVER
 
     def reload(self, instances):
         """Keeps the pgAdmin client (and its login) of unchanged instances; the tree is rescanned on next use."""
         old = self.pgs
         self.pgs = {i["name"]: old[i["name"]] if _same(old.get(i["name"]), i) else PgAdmin(i, self.cookie_dir)
                     for i in instances}
-        self.nodes, self.scanned = {}, 0
+        self.nodes, self.scanned = {}, NEVER
 
     def locate(self, user):
         """-> (pgAdmin client, server node); rescans the trees on a miss, at most once a minute."""

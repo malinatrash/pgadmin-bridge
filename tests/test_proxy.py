@@ -4,10 +4,14 @@ import shutil
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from helpers import Base, pack  # noqa: E402
+from pgadmin_bridge.proxy.registry import Registry  # noqa: E402
+
+from fake_pgadmin import Fake  # noqa: E402
+from helpers import SERVERS, Base, pack  # noqa: E402
 
 
 class ProxyTest(Base):
@@ -55,6 +59,14 @@ class ProxyTest(Base):
         c = self.connect(user="ProxyTest/other", db="")
         self.assertIn(("POST", "/browser/server/connect/1/8", {}), self.fake.calls)
         c.close()
+
+    def test_first_lookup_scans_right_after_boot(self):
+        """time.monotonic() is the uptime on Linux: a fresh CI VM is less than a minute old."""
+        fake = Fake(SERVERS)
+        registry = Registry(None)
+        registry.reload([dict(self.srv.cfg["instances"][0], url=fake.url)])
+        with mock.patch("pgadmin_bridge.proxy.registry.time.monotonic", return_value=5.0):
+            self.assertEqual(registry.locate("main")[1]["label"], "main")
 
     def test_idle_release_replays_sets(self):
         c = self.connect()
