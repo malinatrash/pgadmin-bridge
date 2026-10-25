@@ -12,8 +12,9 @@ import urllib.request
 sys.path[:0] = [os.path.dirname(os.path.abspath(__file__)), os.path.dirname(os.path.dirname(os.path.abspath(__file__)))]
 os.environ["PGADMIN_BRIDGE_DATA"] = tempfile.mkdtemp()
 
-from fake_pgadmin import Fake  # noqa: E402
 from pgadmin_bridge import config, proxy, web  # noqa: E402
+
+from fake_pgadmin import Fake  # noqa: E402
 
 SERVERS = [{"_id": 7, "label": "main", "db": "postgres", "connected": True},
            {"_id": 8, "label": "other", "db": "postgres", "connected": False}]

@@ -9,6 +9,7 @@ import uuid
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pgadmin_bridge.pg import types  # noqa: E402
+
 from helpers import Base, pack  # noqa: E402
 
 

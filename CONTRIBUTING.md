@@ -16,7 +16,7 @@ thing you can send; see the issue templates.
 ```bash
 python3 -m pgadmin_bridge --port 5433 --web-port 8081    # data in ./data
 python3 -m unittest discover tests -b -v                 # tests; installs nothing
-pipx run ruff check pgadmin_bridge tests                  # lint, as in CI
+pipx run ruff==0.8.4 check pgadmin_bridge tests           # lint, as in CI
 ```
 
 The tests start a fake pgAdmin ([`tests/fake_pgadmin.py`](tests/fake_pgadmin.py)) that implements the

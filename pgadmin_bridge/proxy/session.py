@@ -55,7 +55,7 @@ class Session(Extended, socketserver.BaseRequestHandler):
         if values[0] != self.tool.db:
             raise ApiError(f"pgAdmin opened database '{values[0]}' instead of '{self.tool.db}'")
         log(f"[+] {self.name} (tid {self.tool.tid})")
-        return dict(zip(PARAMS, map(str, values[1:])), client_encoding="UTF8")
+        return dict(zip(PARAMS, map(str, values[1:]), strict=False), client_encoding="UTF8")
 
     def attach(self):
         """Opens a Query Tool (= backend) and replays the session SETs in one statement; -> pgAdmin answer."""

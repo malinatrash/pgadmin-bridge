@@ -5,8 +5,8 @@ import mimetypes
 import os
 import urllib.parse
 
-from . import api
 from ..pgadmin import ApiError
+from . import api
 
 STATIC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
 

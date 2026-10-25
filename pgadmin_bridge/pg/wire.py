@@ -41,7 +41,7 @@ class Wire:
                 return "cancel", struct.unpack("!ii", payload[4:12])
             else:
                 parts = payload[4:].split(NULL)
-                return "start", {k.decode(): v.decode() for k, v in zip(parts[0::2], parts[1::2]) if k}
+                return "start", {k.decode(): v.decode() for k, v in zip(parts[0::2], parts[1::2], strict=False) if k}
 
     def password(self):
         self.send(b"R", struct.pack("!i", 3))
@@ -59,7 +59,7 @@ class Wire:
 
     def columns(self, colinfo, fmts):
         body = struct.pack("!h", len(colinfo))
-        for c, fmt in zip(colinfo, fmts):
+        for c, fmt in zip(colinfo, fmts, strict=False):
             name = c.get("display_name") or c["name"]
             body += name.encode() + NULL + struct.pack(
                 "!IhIhih", c.get("table_oid") or 0, c.get("table_column") or 0, column_oid(c.get("type_code")), -1, -1, fmt)
@@ -70,7 +70,7 @@ class Wire:
         out = []
         for values in batch:
             body = struct.pack("!h", len(values))
-            for v, oid, fmt in zip(values, oids, fmts):
+            for v, oid, fmt in zip(values, oids, fmts, strict=False):
                 b = None if v is None else encode(v, oid) if fmt else text(v)
                 body += struct.pack("!i", -1) if b is None else struct.pack("!i", len(b)) + b
             out.append(b"D" + struct.pack("!i", len(body) + 4) + body)
@@ -95,6 +95,6 @@ def text(v):
         return None
     if isinstance(v, bool):
         return b"t" if v else b"f"
-    if isinstance(v, (dict, list)):
+    if isinstance(v, dict | list):
         return json.dumps(v, ensure_ascii=False, default=str).encode()
     return str(v).encode()

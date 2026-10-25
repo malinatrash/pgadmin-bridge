@@ -1,14 +1,15 @@
 """The web UI's JSON API and static files."""
 import os
-import urllib.request
 import sys
 import unittest
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from helpers import Base  # noqa: E402
 from pgadmin_bridge import config  # noqa: E402
 from pgadmin_bridge.web import api  # noqa: E402
+
+from helpers import Base  # noqa: E402
 
 
 class WebTest(Base):

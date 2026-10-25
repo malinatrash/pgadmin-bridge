@@ -19,7 +19,7 @@ jobs:
       - name: Install psql for the end-to-end test
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
       - name: Lint
-        run: pipx run ruff check pgadmin_bridge tests
+        run: pipx run ruff==0.8.4 check pgadmin_bridge tests
       - name: Test
         run: python -m unittest discover tests -b -v
 

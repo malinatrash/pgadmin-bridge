@@ -12,7 +12,7 @@ NAMES = {16: "bool", 17: "bytea", 18: "char", 19: "name", 20: "int8", 21: "int2"
 TEXT_ONLY = {600, 603, 1005, 1007, 1016, 1021, 1022, 1266}
 BINARY = {16, 17, 20, 21, 23, 26, 700, 701, 1082, 1083, 1114, 1184, 1700, 2950}
 EPOCH = datetime.datetime(2000, 1, 1)
-EPOCH_TZ = EPOCH.replace(tzinfo=datetime.timezone.utc)
+EPOCH_TZ = EPOCH.replace(tzinfo=datetime.UTC)
 DATE0 = datetime.date(2000, 1, 1)
 
 
@@ -62,7 +62,9 @@ def encode(value, oid):
     if oid == 17:
         return bytes.fromhex(s[2:]) if s.startswith("\\x") else s.encode("latin-1")
     if oid == 1082:
-        return struct.pack("!i", _special(s, 2**31) if s in ("infinity", "-infinity") else (datetime.date.fromisoformat(s) - DATE0).days)
+        if s in ("infinity", "-infinity"):
+            return struct.pack("!i", _special(s, 2**31))
+        return struct.pack("!i", (datetime.date.fromisoformat(s) - DATE0).days)
     if oid == 1083:
         t = datetime.time.fromisoformat(s)
         return struct.pack("!q", ((t.hour * 60 + t.minute) * 60 + t.second) * 1_000_000 + t.microsecond)
