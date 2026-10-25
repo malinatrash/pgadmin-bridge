@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pgadmin-bridge"
+dynamic = ["version"]
+description = "Connect psql, DataGrip, DBeaver or any PostgreSQL client to databases you can only reach through pgAdmin: a Postgres wire-protocol proxy over pgAdmin's Query Tool API."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Pavel Naumov" }]
+keywords = [
+    "postgresql", "postgres", "pgadmin", "pgadmin4", "proxy", "wire-protocol", "psql", "datagrip", "dbeaver",
+    "jdbc", "database-access", "sql-client", "bastion", "tunnel",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Database",
+    "Topic :: Database :: Front-Ends",
+    "Topic :: System :: Networking",
+]
+
+[project.urls]
+Homepage = "https://github.com/malinatrash/pgadmin-bridge"
+Issues = "https://github.com/malinatrash/pgadmin-bridge/issues"
+
+[project.scripts]
+pgadmin-bridge = "pgadmin_bridge.__main__:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "pgadmin_bridge.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["pgadmin_bridge*"]
+
+[tool.setuptools.package-data]
+pgadmin_bridge = ["web/static/**/*"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"

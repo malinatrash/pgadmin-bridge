@@ -1,5 +1,4 @@
-data/
-tests/
-__pycache__/
-*.pyc
-.git/
+*
+!pgadmin_bridge/
+**/__pycache__
+**/*.pyc
