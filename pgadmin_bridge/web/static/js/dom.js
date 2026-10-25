@@ -59,18 +59,6 @@ export function hostOf(url) {
   try { return new URL(url).host; } catch { return url; }
 }
 
-/** Stable gradient per name, for instance avatars. */
-export function gradient(name) {
-  let h = 0;
-  for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) % 360;
-  return `linear-gradient(135deg, hsl(${h} 75% 62%), hsl(${(h + 40) % 360} 70% 48%))`;
-}
-
-export function initials(name) {
-  const parts = String(name).split(/[\s_\-.]+/).filter(Boolean);
-  return (parts.length > 1 ? parts[0][0] + parts[1][0] : String(name).slice(0, 2)) || "?";
-}
-
 /** Waits for the CSS animation or transition on el to end, with a timeout for reduced motion. */
 export function settle(el, ms = 450) {
   return new Promise(resolve => {

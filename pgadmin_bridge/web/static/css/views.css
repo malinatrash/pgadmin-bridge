@@ -49,8 +49,8 @@
 }
 .code .copy-btn { position: absolute; top: 8px; right: 8px; color: #a0a0b4; }
 .code .copy-btn:hover { background: rgba(255, 255, 255, .08); color: #fff; }
-.code .tok-k { color: #b79cff; }
-.code .tok-s { color: #6ee7a8; }
+.code .tok-k { color: #7cc4ff; }
+.code .tok-s { color: #86efac; }
 .code .tok-p { color: #7d7d92; }
 
 .checklist { display: grid; gap: 2px; padding: var(--space-2); }
@@ -74,7 +74,7 @@
 .check-title { font-weight: 550; }
 .check-item p { color: var(--text-muted); font-size: var(--text-sm); }
 .progress { height: 4px; margin: 0 var(--space-5) var(--space-4); border-radius: var(--radius-full); background: var(--surface-3); overflow: hidden; }
-.progress > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), #2f8cff); transition: width var(--slow) var(--ease); }
+.progress > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), #22c55e); transition: width var(--slow) var(--ease); }
 
 .feed { display: grid; padding: var(--space-2) 0; }
 .feed-item { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: var(--space-3); align-items: start; padding: 7px var(--space-5); font-size: var(--text-sm); }
@@ -90,20 +90,7 @@
 .inst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-4); }
 .inst-card { display: flex; flex-direction: column; transition: border-color var(--normal), box-shadow var(--normal), transform var(--normal) var(--ease); }
 .inst-card:hover { border-color: var(--border-strong); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-.inst-top { display: flex; gap: var(--space-3); align-items: center; padding: var(--space-5) var(--space-5) var(--space-4); }
-.avatar {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  color: #fff;
-  font-weight: 650;
-  font-size: var(--text-md);
-  text-transform: uppercase;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 4px 12px -6px rgba(0, 0, 0, .5);
-}
+.inst-top { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-5) var(--space-5) var(--space-4); }
 .inst-title { min-width: 0; flex: 1; }
 .inst-title h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inst-title a { display: block; color: var(--text-muted); font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -171,20 +158,20 @@
 .log-line time { color: #5f5f75; }
 .log-kind { justify-self: start; height: 18px; margin-top: 1px; padding: 0 6px; border-radius: 4px; font-size: 10px; font-weight: 700; line-height: 18px; letter-spacing: .04em; text-transform: uppercase; }
 .log-text { white-space: pre-wrap; word-break: break-word; }
-.k-sql .log-kind { background: rgba(122, 112, 255, .18); color: #b3acff; }
+.k-sql .log-kind { background: rgba(34, 197, 94, .16); color: #86efac; }
 .k-error .log-kind { background: rgba(255, 107, 116, .18); color: #ff9aa0; }
 .k-error .log-text { color: #ffb4b8; }
 .k-http .log-kind { background: rgba(255, 255, 255, .07); color: #8c8ca3; }
 .k-http .log-text { color: #8c8ca3; }
-.k-session .log-kind { background: rgba(61, 214, 140, .15); color: #6ee7a8; }
-.k-system .log-kind { background: rgba(82, 168, 255, .15); color: #8cc5ff; }
-.log-text .target { color: #8cc5ff; }
-.log-text .ms { color: #6ee7a8; }
+.k-session .log-kind { background: rgba(82, 168, 255, .15); color: #8cc5ff; }
+.k-system .log-kind { background: rgba(255, 255, 255, .07); color: #b4b4c6; }
+.log-text .target { color: #86efac; }
+.log-text .ms { color: #8c8ca3; }
 .log-text .ms.slow { color: #fbbf6a; }
 .log-text .ms.very-slow { color: #ff9aa0; }
 .log-text .tag { color: #f0f0f5; font-weight: 600; }
-.log-text .tok-k { color: #c4b2ff; }
-.log-text .tok-s { color: #6ee7a8; }
+.log-text .tok-k { color: #7cc4ff; }
+.log-text .tok-s { color: #f2c48d; }
 .log-text .tok-n { color: #fbbf6a; }
 .log-text .tok-c { color: #5f5f75; }
 .log-text mark { background: rgba(251, 191, 106, .3); color: inherit; border-radius: 2px; }

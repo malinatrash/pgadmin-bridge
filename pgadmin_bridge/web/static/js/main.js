@@ -19,7 +19,6 @@ function renderNav() {
       <a class="nav-link" href="#/${v.id}" data-view="${v.id}" title="${v.title} (${i + 1})">
         ${icon(v.icon, 17)}<span class="label">${v.title}</span><span class="count" id="count-${v.id}"></span>
       </a>`)}`);
-  mount($("#brand-mark"), icon("bridge", 20));
 }
 
 function moveIndicator() {

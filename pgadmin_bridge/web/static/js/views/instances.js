@@ -1,6 +1,6 @@
 // Instances: one card per pgAdmin with its account, TLS mode and discovered servers.
 import { api, MASK } from "../api.js";
-import { $, gradient, hostOf, html, initials, mount, on } from "../dom.js";
+import { $, hostOf, html, mount, on } from "../dom.js";
 import { icon } from "../icons.js";
 import { saveConfig, store } from "../store.js";
 import { confirm } from "../ui/dialog.js";
@@ -14,7 +14,6 @@ function card(inst) {
   const servers = store.state.servers.filter(s => s.instance === inst.name);
   return html`<article class="card inst-card" data-name="${inst.name}">
     <div class="inst-top">
-      <div class="avatar" style="background:${gradient(inst.name)}">${initials(inst.name)}</div>
       <div class="inst-title"><h3>${inst.name}</h3><a href="${inst.url}" target="_blank" rel="noreferrer">${hostOf(inst.url)}</a></div>
       ${servers.length ? html`<span class="badge green"><span class="dot green"></span>Online</span>` : html`<span class="badge amber">No servers</span>`}
     </div>
