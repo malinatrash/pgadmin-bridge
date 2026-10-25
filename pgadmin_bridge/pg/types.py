@@ -1,10 +1,12 @@
-"""Extended query protocol helpers: $n substitution into SQL text, binary parameter decoding, binary column encoding."""
+"""Type OIDs and the binary wire format: decoding parameters, encoding result columns."""
 import datetime
 import re
 import struct
 import uuid
 
-TYPES = {16: "bool", 17: "bytea", 18: "char", 19: "name", 20: "int8", 21: "int2", 23: "int4", 25: "text", 26: "oid",
+from .errors import ProtocolError
+
+NAMES = {16: "bool", 17: "bytea", 18: "char", 19: "name", 20: "int8", 21: "int2", 23: "int4", 25: "text", 26: "oid",
          114: "json", 700: "float4", 701: "float8", 1042: "bpchar", 1043: "varchar", 1082: "date", 1083: "time",
          1114: "timestamp", 1184: "timestamptz", 1186: "interval", 1700: "numeric", 2950: "uuid", 3802: "jsonb"}
 TEXT_ONLY = {600, 603, 1005, 1007, 1016, 1021, 1022, 1266}
@@ -12,34 +14,6 @@ BINARY = {16, 17, 20, 21, 23, 26, 700, 701, 1082, 1083, 1114, 1184, 1700, 2950}
 EPOCH = datetime.datetime(2000, 1, 1)
 EPOCH_TZ = EPOCH.replace(tzinfo=datetime.timezone.utc)
 DATE0 = datetime.date(2000, 1, 1)
-TOKEN = re.compile(r"""'(?:[^']|'')*'|"(?:[^"]|"")*"|--[^\n]*|/\*.*?\*/|(\$[A-Za-z_]*\$).*?\1|\$(\d+)""", re.S)
-
-
-class ProtocolError(Exception):
-    pass
-
-
-def substitute(sql, params, oids):
-    """Replaces $n with literals; params are (format, bytes|None), oids the declared types (0 = unknown)."""
-    def repl(m):
-        if not m.group(2):
-            return m.group(0)
-        n = int(m.group(2))
-        if not 1 <= n <= len(params):
-            raise ProtocolError(f"there is no parameter ${n}")
-        oid = oids[n - 1] if n <= len(oids) else 0
-        return literal(*params[n - 1], oid)
-    return TOKEN.sub(repl, sql)
-
-
-def literal(fmt, raw, oid):
-    cast = f"::{TYPES[oid]}" if oid in TYPES else ""
-    if raw is None:
-        return "NULL" + cast
-    text = decode(raw, oid) if fmt == 1 else raw.decode("utf-8", "replace")
-    if oid == 17:
-        return f"'\\x{raw.hex()}'::bytea" if fmt == 1 else f"'{text.replace(chr(39), chr(39) * 2)}'::bytea"
-    return "'" + text.replace("'", "''") + "'" + cast
 
 
 def decode(raw, oid):
@@ -60,7 +34,7 @@ def decode(raw, oid):
         us = struct.unpack("!q", raw)[0]
         base = EPOCH_TZ if oid == 1184 else EPOCH
         return (base + datetime.timedelta(microseconds=us)).isoformat(" ")
-    raise ProtocolError(f"binary parameter of type {TYPES.get(oid, oid)} is not supported")
+    raise ProtocolError(f"binary parameter of type {NAMES.get(oid, oid)} is not supported")
 
 
 def column_oid(oid):

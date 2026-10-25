@@ -10,7 +10,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from log import log
+from ..log import elapsed, log
 
 
 class ApiError(Exception):
@@ -57,7 +57,7 @@ class PgAdmin:
                 st, data = e, None
             if not isinstance(data, dict):
                 self.authed = False
-        log(f"  http {self.name} {method} {path} -> {st} {_ms(start)}")
+        log(f"  http {self.name} {method} {path} -> {st} {elapsed(start)}")
         if not isinstance(data, dict):
             raise Lost(f"pgAdmin '{self.name}' did not answer ({st}); reconnect")
         if st < 400 and data.get("success") != 0:
@@ -136,7 +136,3 @@ def _items(resp):
 
 def _slug(name):
     return re.sub(r"[^\w.-]+", "_", name)
-
-
-def _ms(start):
-    return f"{(time.monotonic() - start) * 1000:6.0f}ms"

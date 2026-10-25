@@ -6,10 +6,10 @@ import sys
 import unittest
 import uuid
 
-sys.path[:0] = [os.path.dirname(os.path.abspath(__file__)), os.path.dirname(os.path.dirname(os.path.abspath(__file__)))]
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import extended  # noqa: E402
-from test_proxy import Base, pack  # noqa: E402
+from pgadmin_bridge.pg import types  # noqa: E402
+from helpers import Base, pack  # noqa: E402
 
 
 def parse(name, sql, oids=()):
@@ -118,14 +118,14 @@ class ExtendedTest(Base):
         c.close()
 
     def test_codecs(self):
-        self.assertEqual(extended.numeric("0"), struct.pack("!hhhh", 0, 0, 0, 0))
-        self.assertEqual(extended.numeric("10000.01"), struct.pack("!hhhh", 3, 1, 0, 2) + struct.pack("!hhh", 1, 0, 100))
-        self.assertEqual(extended.encode("infinity", 1114), struct.pack("!q", 2**63 - 1))
-        self.assertEqual(extended.encode("2000-01-01 00:00:00", 1114), struct.pack("!q", 0))
-        self.assertEqual(extended.encode("12:34:56.5", 1083), struct.pack("!q", 45296500000))
-        self.assertEqual(extended.encode("\\x00ff", 17), b"\x00\xff")
-        self.assertEqual(extended.decode(struct.pack("!i", 9), 1082), "2000-01-10")
-        self.assertEqual(extended.decode(struct.pack("!q", 1_000_000), 1184), "2000-01-01 00:00:01+00:00")
+        self.assertEqual(types.numeric("0"), struct.pack("!hhhh", 0, 0, 0, 0))
+        self.assertEqual(types.numeric("10000.01"), struct.pack("!hhhh", 3, 1, 0, 2) + struct.pack("!hhh", 1, 0, 100))
+        self.assertEqual(types.encode("infinity", 1114), struct.pack("!q", 2**63 - 1))
+        self.assertEqual(types.encode("2000-01-01 00:00:00", 1114), struct.pack("!q", 0))
+        self.assertEqual(types.encode("12:34:56.5", 1083), struct.pack("!q", 45296500000))
+        self.assertEqual(types.encode("\\x00ff", 17), b"\x00\xff")
+        self.assertEqual(types.decode(struct.pack("!i", 9), 1082), "2000-01-10")
+        self.assertEqual(types.decode(struct.pack("!q", 1_000_000), 1184), "2000-01-01 00:00:01+00:00")
 
 
 

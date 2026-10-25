@@ -14,6 +14,11 @@ def log(msg):
         LINES.append(line)
 
 
-def tail(n=300):
+def tail(n=500):
     with LOCK:
         return list(LINES)[-n:]
+
+
+def elapsed(start):
+    """Milliseconds since a time.monotonic() value, padded for aligned log columns."""
+    return f"{(time.monotonic() - start) * 1000:6.0f}ms"

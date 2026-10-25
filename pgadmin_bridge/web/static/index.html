@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>pgproxy</title>
+<title>pgadmin-bridge</title>
 <style>
   :root { --bg: #fff; --fg: #1b1b1b; --muted: #6b6b6b; --line: #e3e3e3; --card: #f7f7f7; --accent: #2f6fed; --bad: #c62828; --ok: #2e7d32; }
   @media (prefers-color-scheme: dark) {
@@ -169,7 +169,7 @@ function apply(s, full = true) {
     document.getElementById("read_only").checked = s.config.read_only;
   }
   document.getElementById("servers").innerHTML = s.servers.length
-    ? s.servers.map(x => `<code>${h(x)}</code>`).join(" · ")
+    ? s.servers.map(x => `<code>${h(x.instance + "/" + x.server)}</code>`).join(" · ")
     : "nothing discovered yet: add an instance, save, then rescan";
   document.getElementById("conns").innerHTML = s.connections.map(c => `
     <tr><td>${h(c.client)}</td><td><code>${h(c.target)}</code></td>
