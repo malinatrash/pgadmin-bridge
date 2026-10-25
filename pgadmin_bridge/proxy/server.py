@@ -13,9 +13,10 @@ class Server(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-    def __init__(self, addr, cfg, cookie_dir):
+    def __init__(self, addr, cfg, cookie_dir, advertise=None):
         super().__init__(addr, Session)
         self.registry, self.conns, self.cfg = Registry(cookie_dir), {}, {}
+        self.advertise = advertise  # host:port clients use, when it differs from the listen address (Docker)
         self.reload(cfg)
         threading.Thread(target=self.reap, daemon=True).start()
 

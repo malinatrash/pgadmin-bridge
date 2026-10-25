@@ -1,5 +1,6 @@
 """The web UI's JSON API and static files."""
 import os
+import urllib.request
 import sys
 import unittest
 
@@ -33,6 +34,11 @@ class WebTest(Base):
             self.assertEqual(config.load()["instances"][0]["password"], "secret")
         finally:
             self.http("/api/config", state["config"] | {"instances": [dict(inst, name=inst["was"], was="renamed")]})
+
+    def test_static_assets_have_module_friendly_types(self):
+        for path, ctype in [("/js/main.js", "javascript"), ("/css/base.css", "text/css"), ("/favicon.svg", "image/svg+xml")]:
+            with urllib.request.urlopen(f"http://127.0.0.1:{self.ui_port}{path}") as r:
+                self.assertIn(ctype, r.headers["Content-Type"])
 
     def test_static_files_stay_inside_static_dir(self):
         self.assertEqual(self.http("/../api.py"), "not found")

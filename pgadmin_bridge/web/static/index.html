@@ -3,191 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>pgadmin-bridge</title>
-<style>
-  :root { --bg: #fff; --fg: #1b1b1b; --muted: #6b6b6b; --line: #e3e3e3; --card: #f7f7f7; --accent: #2f6fed; --bad: #c62828; --ok: #2e7d32; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #151618; --fg: #e8e8e8; --muted: #9a9a9a; --line: #2c2d30; --card: #1d1e21; --accent: #6b9cff; --bad: #ef6b6b; --ok: #6fcf7a; }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, sans-serif; }
-  main { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
-  h1 { font-size: 20px; margin: 0; }
-  h1 small { color: var(--muted); font-weight: normal; margin-left: 8px; }
-  h2 { font-size: 15px; margin: 0 0 10px; }
-  section { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
-  label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
-  input[type=text], input[type=password], input[type=number], input[type=url] { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
-  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
-  .check { flex-direction: row; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg); padding-bottom: 7px; }
-  button { padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; cursor: pointer; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button.danger { color: var(--bad); }
-  .inst { border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin-bottom: 10px; background: var(--bg); }
-  .inst .row { margin-bottom: 8px; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .msg { font-size: 13px; min-height: 1.4em; }
-  .msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: normal; }
-  code, pre { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  pre { margin: 0; max-height: 360px; overflow: auto; white-space: pre-wrap; word-break: break-all; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
-  .hint { color: var(--muted); font-size: 12px; }
-  .pill { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; background: var(--line); }
-  .pill.on { background: var(--ok); color: #fff; }
-  .pill.tx { background: var(--accent); color: #fff; }
-</style>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components/controls.css">
+<link rel="stylesheet" href="css/components/surfaces.css">
+<link rel="stylesheet" href="css/components/overlays.css">
+<link rel="stylesheet" href="css/views.css">
+<script>
+  try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+</script>
+<script type="module" src="js/main.js"></script>
 </head>
 <body>
-<main>
-  <h1>pgproxy <small>PostgreSQL wire proxy over pgAdmin</small></h1>
-
-  <section>
-    <h2>pgAdmin instances</h2>
-    <div id="instances"></div>
-    <div class="actions">
-      <button onclick="addInstance()">+ Add instance</button>
-      <span class="hint">Clients log in with User = <code>server name</code> from the pgAdmin tree (or <code>instance/server</code>) and Database = a database on it.</span>
-    </div>
-  </section>
-
-  <section>
-    <h2>Proxy settings</h2>
-    <div class="row">
-      <label>Proxy password (what clients send)<input type="password" id="password" autocomplete="new-password"></label>
-      <label>Statement timeout, s (0 = none)<input type="number" id="timeout" min="0"></label>
-      <label>Release idle backend after, s (0 = keep)<input type="number" id="idle" min="0"></label>
-      <label class="check"><input type="checkbox" id="read_only"> Read-only sessions</label>
-    </div>
-    <div class="actions" style="margin-top:10px">
-      <button class="primary" onclick="save()">Save &amp; apply</button>
-      <span id="msg" class="msg"></span>
-    </div>
-  </section>
-
-  <section>
-    <h2>Discovered servers <button onclick="rescan()" style="margin-left:8px">Rescan</button></h2>
-    <div id="servers" class="hint"></div>
-  </section>
-
-  <section>
-    <h2>Connections</h2>
-    <table><thead><tr><th>Client</th><th>User / Database</th><th>Backend</th><th>Idle</th><th></th></tr></thead><tbody id="conns"></tbody></table>
-  </section>
-
-  <section>
-    <h2>Log <span class="hint">SQL with timing, and every HTTP call to pgAdmin</span></h2>
-    <pre id="log"></pre>
-  </section>
-</main>
-
-<script>
-let state = null;
-
-async function api(path, body) {
-  const r = await fetch(path, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {});
-  const data = await r.json();
-  if (data.error) throw new Error(data.error);
-  return data;
-}
-
-function h(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
-
-function renderInstances(list) {
-  document.getElementById("instances").innerHTML = list.map((i, n) => `
-    <div class="inst" data-n="${n}">
-      <div class="row">
-        <label>Name<input type="text" name="name" value="${h(i.name)}" placeholder="prod"></label>
-        <label>pgAdmin URL<input type="url" name="url" value="${h(i.url)}" placeholder="https://pgadmin.example.com"></label>
-        <label>Email<input type="text" name="email" value="${h(i.email)}" autocomplete="off"></label>
-        <label>Password<input type="password" name="password" value="${h(i.password)}" autocomplete="new-password"></label>
-        <label class="check"><input type="checkbox" name="verify_tls" ${i.verify_tls ? "checked" : ""}> Verify TLS</label>
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="#/overview" aria-label="pgadmin-bridge home">
+      <span class="brand-mark" id="brand-mark"></span>
+      <span class="brand-name">pgadmin-bridge<small>Postgres wire ⇄ pgAdmin</small></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Main"></nav>
+    <div class="sidebar-foot">
+      <div class="listener" id="listener"></div>
+      <div class="sidebar-row">
+        <span class="version" id="version"></span>
+        <button class="icon-btn" id="theme" type="button" aria-label="Toggle color theme"></button>
       </div>
-      <div class="actions">
-        <button onclick="testInstance(${n})">Test login</button>
-        <button class="danger" onclick="removeInstance(${n})">Remove</button>
-        <span class="msg" id="imsg${n}"></span>
-      </div>
-    </div>`).join("") || '<p class="hint">No instances yet. Add the pgAdmin you use and the account you log in with.</p>';
-}
-
-function readInstances() {
-  return [...document.querySelectorAll(".inst")].map(el => ({
-    name: el.querySelector("[name=name]").value.trim(),
-    url: el.querySelector("[name=url]").value.trim(),
-    email: el.querySelector("[name=email]").value.trim(),
-    password: el.querySelector("[name=password]").value,
-    verify_tls: el.querySelector("[name=verify_tls]").checked,
-  }));
-}
-
-function readConfig() {
-  return {
-    instances: readInstances(),
-    password: document.getElementById("password").value,
-    timeout: +document.getElementById("timeout").value || 0,
-    idle: +document.getElementById("idle").value || 0,
-    read_only: document.getElementById("read_only").checked,
-  };
-}
-
-function addInstance() { renderInstances([...readInstances(), {name: "", url: "", email: "", password: "", verify_tls: true}]); }
-function removeInstance(n) { renderInstances(readInstances().filter((_, i) => i !== n)); }
-
-async function testInstance(n) {
-  const el = document.getElementById("imsg" + n);
-  say(el, "testing…");
-  try {
-    const r = await api("/api/test", readInstances()[n]);
-    say(el, "ok, servers: " + (r.servers.join(", ") || "(none in the tree)"), "ok");
-  } catch (e) { say(el, e.message, "bad"); }
-}
-
-async function save() {
-  const el = document.getElementById("msg");
-  say(el, "saving…");
-  try {
-    apply(await api("/api/config", readConfig()));
-    say(el, "saved and applied", "ok");
-  } catch (e) { say(el, e.message, "bad"); }
-}
-
-async function rescan() { try { apply(await api("/api/rescan", {})); } catch (e) { say(document.getElementById("msg"), e.message, "bad"); } }
-
-async function kill(key) { try { apply(await api("/api/kill", {key})); } catch (e) { say(document.getElementById("msg"), e.message, "bad"); } }
-
-function say(el, text, cls) { el.textContent = text; el.className = "msg " + (cls || ""); }
-
-function apply(s, full = true) {
-  state = s;
-  if (full) {
-    renderInstances(s.config.instances);
-    document.getElementById("password").value = s.config.password;
-    document.getElementById("timeout").value = s.config.timeout;
-    document.getElementById("idle").value = s.config.idle;
-    document.getElementById("read_only").checked = s.config.read_only;
-  }
-  document.getElementById("servers").innerHTML = s.servers.length
-    ? s.servers.map(x => `<code>${h(x.instance + "/" + x.server)}</code>`).join(" · ")
-    : "nothing discovered yet: add an instance, save, then rescan";
-  document.getElementById("conns").innerHTML = s.connections.map(c => `
-    <tr><td>${h(c.client)}</td><td><code>${h(c.target)}</code></td>
-      <td>${c.backend ? `<span class="pill on">open</span>` : `<span class="pill">released</span>`} ${c.in_tx ? `<span class="pill tx">in transaction</span>` : ""}</td>
-      <td>${c.idle_s}s</td><td><button class="danger" onclick="kill('${h(c.key)}')">Disconnect</button></td></tr>`).join("")
-    || `<tr><td colspan="5" class="hint">no clients connected</td></tr>`;
-}
-
-async function refresh() {
-  try {
-    apply(await api("/api/state"), false);
-    const pre = document.getElementById("log"), stick = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40;
-    pre.textContent = (await api("/api/log")).lines.join("\n");
-    if (stick) pre.scrollTop = pre.scrollHeight;
-  } catch (e) { /* proxy restarting */ }
-}
-
-api("/api/state").then(s => { apply(s); refresh(); setInterval(refresh, 3000); });
-</script>
+    </div>
+  </aside>
+  <main class="main" id="main">
+    <div class="view" id="view"></div>
+  </main>
+</div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 </body>
 </html>

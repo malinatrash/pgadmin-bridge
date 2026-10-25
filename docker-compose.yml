@@ -10,6 +10,8 @@ services:
       - pgadmin-bridge-data:/data
     environment:
       TZ: "${TZ:-UTC}"
+      # what the web UI tells clients to connect to
+      PGADMIN_BRIDGE_ADVERTISE: "127.0.0.1:${BRIDGE_PORT:-5555}"
     restart: unless-stopped
     logging:
       driver: json-file

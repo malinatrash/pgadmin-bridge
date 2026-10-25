@@ -12,7 +12,9 @@ def state(proxy, body=None):
     shown = dict(cfg, password=MASK if cfg["password"] else "",
                  instances=[dict(i, password=MASK if i["password"] else "") for i in cfg["instances"]])
     host, port = proxy.server_address[:2]
-    return dict(proxy.status(), config=shown, version=__version__, listen={"host": host, "port": port})
+    if proxy.advertise:
+        host, _, port = proxy.advertise.rpartition(":")
+    return dict(proxy.status(), config=shown, version=__version__, listen={"host": host, "port": int(port)})
 
 
 def logs(proxy, body=None):

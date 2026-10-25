@@ -1,0 +1,150 @@
+/* Design tokens: one palette per theme, shared spacing, radii, type and motion. */
+:root {
+  --font: "Inter", "InterVariable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-xs: 11.5px;
+  --text-sm: 12.5px;
+  --text-md: 13.5px;
+  --text-lg: 15px;
+  --text-xl: 22px;
+  --text-2xl: 30px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --radius-xs: 5px;
+  --radius-sm: 7px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --ease-in: cubic-bezier(.4, 0, 1, 1);
+  --spring: cubic-bezier(.34, 1.4, .64, 1);
+  --fast: 120ms;
+  --normal: 220ms;
+  --slow: 380ms;
+
+  --sidebar: 248px;
+  --content: 1120px;
+
+  color-scheme: light;
+  --bg: #f6f6f8;
+  --bg-glow: rgba(99, 91, 255, .07);
+  --surface: #ffffff;
+  --surface-2: #f3f3f6;
+  --surface-3: #ebebf0;
+  --overlay: rgba(15, 15, 25, .28);
+  --border: #e5e5eb;
+  --border-strong: #d2d2db;
+  --text: #15151c;
+  --text-muted: #62626f;
+  --text-faint: #9393a1;
+  --accent: #5b4ff0;
+  --accent-hover: #4c40e0;
+  --accent-text: #4a3fd6;
+  --accent-soft: rgba(91, 79, 240, .09);
+  --accent-ring: rgba(91, 79, 240, .28);
+  --on-accent: #ffffff;
+  --green: #12a150;
+  --green-soft: rgba(18, 161, 80, .1);
+  --amber: #c27803;
+  --amber-soft: rgba(217, 140, 6, .12);
+  --red: #dc3545;
+  --red-soft: rgba(220, 53, 69, .09);
+  --blue: #0b78e3;
+  --blue-soft: rgba(11, 120, 227, .1);
+  --shadow-sm: 0 1px 2px rgba(16, 16, 30, .05);
+  --shadow: 0 1px 2px rgba(16, 16, 30, .04), 0 4px 16px -4px rgba(16, 16, 30, .08);
+  --shadow-lg: 0 12px 48px -12px rgba(16, 16, 30, .25), 0 2px 6px rgba(16, 16, 30, .06);
+  --code-keyword: #7c3aed;
+  --code-string: #0f7b4b;
+  --code-number: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #09090c;
+    --bg-glow: rgba(120, 110, 255, .10);
+    --surface: #111116;
+    --surface-2: #17171e;
+    --surface-3: #1f1f28;
+    --overlay: rgba(0, 0, 0, .55);
+    --border: #22222b;
+    --border-strong: #31313d;
+    --text: #ececf1;
+    --text-muted: #9d9dad;
+    --text-faint: #686878;
+    --accent: #7a70ff;
+    --accent-hover: #8d84ff;
+    --accent-text: #a49dff;
+    --accent-soft: rgba(122, 112, 255, .13);
+    --accent-ring: rgba(122, 112, 255, .38);
+    --on-accent: #ffffff;
+    --green: #3dd68c;
+    --green-soft: rgba(61, 214, 140, .12);
+    --amber: #f5b33d;
+    --amber-soft: rgba(245, 179, 61, .13);
+    --red: #ff6b74;
+    --red-soft: rgba(255, 107, 116, .12);
+    --blue: #52a8ff;
+    --blue-soft: rgba(82, 168, 255, .13);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 24px -8px rgba(0, 0, 0, .5);
+    --shadow-lg: 0 24px 64px -16px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .04);
+    --code-keyword: #b79cff;
+    --code-string: #6ee7a8;
+    --code-number: #fbbf6a;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #09090c;
+  --bg-glow: rgba(120, 110, 255, .10);
+  --surface: #111116;
+  --surface-2: #17171e;
+  --surface-3: #1f1f28;
+  --overlay: rgba(0, 0, 0, .55);
+  --border: #22222b;
+  --border-strong: #31313d;
+  --text: #ececf1;
+  --text-muted: #9d9dad;
+  --text-faint: #686878;
+  --accent: #7a70ff;
+  --accent-hover: #8d84ff;
+  --accent-text: #a49dff;
+  --accent-soft: rgba(122, 112, 255, .13);
+  --accent-ring: rgba(122, 112, 255, .38);
+  --on-accent: #ffffff;
+  --green: #3dd68c;
+  --green-soft: rgba(61, 214, 140, .12);
+  --amber: #f5b33d;
+  --amber-soft: rgba(245, 179, 61, .13);
+  --red: #ff6b74;
+  --red-soft: rgba(255, 107, 116, .12);
+  --blue: #52a8ff;
+  --blue-soft: rgba(82, 168, 255, .13);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 24px -8px rgba(0, 0, 0, .5);
+  --shadow-lg: 0 24px 64px -16px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .04);
+  --code-keyword: #b79cff;
+  --code-string: #6ee7a8;
+  --code-number: #fbbf6a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --fast: 0ms;
+    --normal: 0ms;
+    --slow: 0ms;
+  }
+}

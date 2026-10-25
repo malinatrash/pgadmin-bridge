@@ -1,0 +1,117 @@
+/* Overlays and feedback: drawer, dialog, toasts, copy feedback, the floating save bar. */
+
+/* ---------- drawer ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--overlay);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity var(--normal) var(--ease);
+}
+.overlay.open { opacity: 1; }
+.drawer {
+  position: fixed;
+  z-index: 51;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  width: min(480px, calc(100vw - 16px));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(calc(100% + 24px));
+  transition: transform var(--slow) var(--ease);
+}
+.drawer.open { transform: none; }
+.drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--border); }
+.drawer-head p { color: var(--text-muted); font-size: var(--text-sm); margin-top: 2px; }
+.drawer-body { flex: 1; overflow-y: auto; padding: var(--space-6); }
+.drawer-foot { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border); }
+.drawer-foot .spacer { flex: 1; }
+
+/* ---------- dialog ---------- */
+.dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+.dialog[open] { animation: pop var(--normal) var(--spring) both; }
+.dialog::backdrop { background: var(--overlay); backdrop-filter: blur(3px); animation: fade var(--normal) var(--ease) both; }
+.dialog-body { display: flex; gap: var(--space-4); padding: var(--space-6); }
+.dialog-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--red-soft); color: var(--red); }
+.dialog-body p { margin-top: var(--space-1); color: var(--text-muted); }
+.dialog-foot { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border); background: var(--surface-2); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+
+/* ---------- toasts ---------- */
+.toasts {
+  position: fixed;
+  z-index: 60;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: min(380px, calc(100vw - 40px));
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: toast-in var(--slow) var(--spring) both;
+}
+.toast.leave { animation: toast-out var(--normal) var(--ease-in) both; }
+.toast > svg { flex: none; margin-top: 2px; }
+.toast.success > svg { color: var(--green); }
+.toast.error > svg { color: var(--red); }
+.toast.info > svg { color: var(--accent); }
+.toast-text { flex: 1; min-width: 0; }
+.toast-text strong { display: block; font-weight: 600; }
+.toast-text span { display: block; color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px) scale(.96); } }
+@keyframes toast-out { to { opacity: 0; transform: translateX(16px); } }
+
+/* ---------- copy button feedback ---------- */
+.copy-btn .icon-check { display: none; color: var(--green); }
+.copy-btn.copied .icon-copy { display: none; }
+.copy-btn.copied .icon-check { display: block; animation: pop var(--normal) var(--spring) both; }
+
+/* ---------- save bar ---------- */
+.savebar {
+  position: fixed;
+  z-index: 30;
+  left: calc(var(--sidebar) + (100vw - var(--sidebar)) / 2);
+  bottom: var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(1.5);
+  box-shadow: var(--shadow-lg);
+  transform: translate(-50%, 140%);
+  opacity: 0;
+  transition: transform var(--slow) var(--spring), opacity var(--normal) var(--ease);
+}
+.savebar.show { transform: translate(-50%, 0); opacity: 1; }
+.savebar .btn { border-radius: var(--radius-full); }
+.savebar-text { display: flex; align-items: center; gap: var(--space-2); font-weight: 550; white-space: nowrap; }
+@media (max-width: 900px) { .savebar { left: 50%; } }

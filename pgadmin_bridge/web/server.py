@@ -8,7 +8,7 @@ import urllib.parse
 from . import api
 from ..pgadmin import ApiError
 
-STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+STATIC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
 
 
 class Server(http.server.ThreadingHTTPServer):
