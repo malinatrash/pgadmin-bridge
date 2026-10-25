@@ -5,6 +5,8 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-25
+
 ### Fixed
 
 - Clients could not connect when the bridge started less than a minute after the machine booted
@@ -33,5 +35,6 @@ First public release as **pgadmin-bridge** (previously developed as `pgproxy`).
 - The data directory variable is now `PGADMIN_BRIDGE_DATA`; `PGPROXY_DATA` is still read.
 - Renaming an instance in the UI keeps its saved password.
 
-[Unreleased]: https://github.com/malinatrash/pgadmin-bridge/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/malinatrash/pgadmin-bridge/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/malinatrash/pgadmin-bridge/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/malinatrash/pgadmin-bridge/releases/tag/v1.0.0
