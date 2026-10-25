@@ -1,0 +1,15 @@
+name: Feature request
+description: A client, pgAdmin setup or workflow you want supported
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The workflow or client, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help

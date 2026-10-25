@@ -1,0 +1,36 @@
+name: Bug report
+description: Something does not work with a client or with pgAdmin
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: Client
+      placeholder: "DataGrip 2026.2, psql 17, JDBC 42.7, ..."
+    validations:
+      required: true
+  - type: input
+    id: pgadmin
+    attributes:
+      label: pgAdmin version and sign-in method
+      placeholder: "pgAdmin 8.12, internal accounts"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pgadmin-bridge version
+      placeholder: "v1.0.0 (shown in the web UI sidebar)"
+  - type: textarea
+    id: log
+    attributes:
+      label: Log lines
+      description: From the Logs page or `docker compose logs`. Remove anything sensitive.
+      render: text
