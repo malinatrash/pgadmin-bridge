@@ -5,6 +5,8 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-31
+
 ### Changed
 
 - Far fewer and faster round trips to pgAdmin: one keep-alive HTTP(S) connection per login instead of a
