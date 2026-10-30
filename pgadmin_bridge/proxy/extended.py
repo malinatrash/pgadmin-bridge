@@ -23,7 +23,7 @@ class Extended:
             stmt, _, rest = rest.partition(NULL)
             sql, oids = self.stmts[stmt.decode()]
             params, rfmts = parse_bind(rest)
-            self.portals[portal.decode()] = {"sql": substitute(sql, params, oids), "rfmts": rfmts, "result": None, "sent": 0}
+            self.portals[portal.decode()] = {"sql": substitute(sql, params, oids), "rfmts": rfmts, "result": None}
             w.send(b"2")
         elif kind == b"D":
             name = body[1:].partition(NULL)[0].decode()
@@ -32,19 +32,23 @@ class Extended:
                 w.send(b"t", struct.pack("!h", len(oids)) + b"".join(struct.pack("!I", o or 25) for o in oids))
                 w.send(b"n")
             else:
-                d = self.portal(name)
-                w.send(b"n") if d["colinfo"] is None else w.columns(d["colinfo"], d["fmts"])
+                r = self.portal(name)
+                w.send(b"n") if r.colinfo is None else w.columns(r.colinfo, r.fmts)
         elif kind == b"E":
             name, _, rest = body.partition(NULL)
             name, maxrows = name.decode(), struct.unpack("!i", rest[:4])[0]
-            d = self.portal(name)
-            if d["tag"] is None:
+            r = self.portal(name)
+            if r is EMPTY:
                 return w.send(b"I")
-            p = self.portals[name]
-            chunk = d["rows"][p["sent"]:p["sent"] + maxrows] if maxrows > 0 else d["rows"][p["sent"]:]
-            w.rows(chunk, d["colinfo"], d["fmts"])
-            p["sent"] += len(chunk)
-            w.send(b"s") if p["sent"] < len(d["rows"]) else w.complete(d["tag"])
+            if maxrows > 0 or r.buf is not None:
+                # a row limit means the portal may be suspended and resumed: its rows have to be kept around
+                rows = r.all()
+                chunk = rows[r.sent:r.sent + maxrows] if maxrows > 0 else rows[r.sent:]
+                w.rows(chunk, r.colinfo, r.fmts)
+                r.sent += len(chunk)
+                return w.send(b"s") if r.sent < len(rows) else w.complete(r.tag)
+            w.rows(r.stream(), r.colinfo, r.fmts)
+            w.complete(r.tag)
         elif kind == b"C":
             (self.stmts if body[:1] == b"S" else self.portals).pop(body[1:].partition(NULL)[0].decode(), None)
             w.send(b"3")
@@ -52,16 +56,22 @@ class Extended:
             raise ProtocolError(f"unsupported message type {kind!r}")
 
     def portal(self, name):
-        """Runs the portal's SQL once; -> result with the column formats the client asked for."""
+        """Runs the portal's SQL once; -> Result with the column formats the client asked for (EMPTY for a blank query)."""
         p = self.portals[name]
         if p["result"] is None:
             if not p["sql"].strip():
-                p["result"] = {"colinfo": None, "rows": [], "tag": None, "fmts": []}
+                p["result"] = EMPTY
             else:
-                d, rf = self.execute(p["sql"]), p["rfmts"]
-                d["fmts"] = []
-                for i, c in enumerate(d["colinfo"] or []):
+                r, rf = self.execute(p["sql"]), p["rfmts"]
+                for i, c in enumerate(r.colinfo or []):
                     want = rf[i] if len(rf) > 1 else (rf[0] if rf else 0)
-                    d["fmts"].append(1 if want and column_oid(c.get("type_code")) in BINARY else 0)
-                p["result"] = d
+                    r.fmts[i] = 1 if want and column_oid(c.get("type_code")) in BINARY else 0
+                p["result"] = r
         return p["result"]
+
+
+class _Empty:
+    colinfo = None
+
+
+EMPTY = _Empty()

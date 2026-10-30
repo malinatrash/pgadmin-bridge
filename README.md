@@ -70,6 +70,10 @@ flowchart LR
 - **Web UI**: connection-string builder for psql, JDBC, URI and libpq env, live connections with
   one-click disconnect, a searchable SQL and HTTP log, light and dark themes.
 - **Persistent**: settings and pgAdmin session cookies live in one volume and survive restarts.
+- **Light on pgAdmin**: keep-alive HTTPS connections and gzip, a pool of logins so statements from several
+  clients run in parallel, rows streamed to the client as pgAdmin hands them out and fetched in one go
+  where pgAdmin supports it. Keepalive pings (`SELECT 1`), `select version()`, `SHOW` of known settings
+  and cosmetic `SET`s are answered locally, so an idle IDE tab costs pgAdmin nothing.
 
 ## Quick start
 
@@ -166,8 +170,8 @@ psycopg.connect("host=127.0.0.1 port=5432 user=billing-primary dbname=billing pa
 - **Instances**: add, edit, test and remove pgAdmin instances and see the servers each one exposes.
 - **Connections**: every client with its backend state (open or released), open transaction, idle
   time, number of queries, and a disconnect button.
-- **Settings**: proxy password, read-only sessions, statement timeout, idle backend release.
-  Applied live, without a restart.
+- **Settings**: proxy password, read-only sessions, statement timeout, idle backend release,
+  parallel pgAdmin sessions, catalog cache. Applied live, without a restart.
 - **Logs**: every statement with timing and result tag, sessions opening and closing, every HTTP
   call to pgAdmin. Filter by kind or search; press `/` to focus the search.
 
@@ -181,6 +185,8 @@ Settings from the web UI are stored in `config.json` in the data directory and a
 | Read-only sessions | off | Every backend starts with `default_transaction_read_only = on`. |
 | Statement timeout | `0` (off) | `statement_timeout` for every backend, in seconds. `120` is a sensible production default. |
 | Release idle backend after | `600` s | Closes the Query Tool of an idle client outside a transaction; also sets `idle_in_transaction_session_timeout`. |
+| Parallel pgAdmin sessions | `4` | Logins kept per pgAdmin instance. pgAdmin serializes the requests of one login, so this is how many statements run at once across all clients of that instance. |
+| Catalog cache | `0` (off) | Seconds to keep results of read-only `pg_catalog` / `information_schema` queries, shared by all clients. Tames the introspection storm of DataGrip and DBeaver. |
 
 Command line and environment:
 

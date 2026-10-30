@@ -1,10 +1,11 @@
 """A tiny HTTP server that answers like pgAdmin 7: login with CSRF, server tree, Query Tool with canned SQL."""
+import gzip
 import http.server
 import json
 import threading
 import urllib.parse
 
-SETTINGS = ["16.4", "UTF8", "ISO, MDY", "UTC", "on", "on"]
+SETTINGS = ["PostgreSQL 16.4 (fake)", "16.4", "UTF8", "ISO, MDY", "UTC", "on", "on"]
 ERR = 'ERROR:  relation "nope" does not exist\nLINE 1: select * from nope\n                      ^\nSQL state: 42P01\nCharacter: 15'
 
 
@@ -14,7 +15,7 @@ class Fake(http.server.ThreadingHTTPServer):
     def __init__(self, servers, email="admin@example.com", password="secret"):
         super().__init__(("127.0.0.1", 0), Handler)
         self.servers, self.email, self.password = servers, email, password
-        self.tools, self.calls, self.logins = {}, [], 0
+        self.tools, self.calls, self.logins, self.sockets, self.fetch_all = {}, [], 0, 0, True
         threading.Thread(target=self.serve_forever, daemon=True).start()
 
     @property
@@ -23,6 +24,12 @@ class Fake(http.server.ThreadingHTTPServer):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def setup(self):
+        super().setup()
+        self.server.sockets += 1
+
     def do_GET(self):
         self.route("GET", self.path, None)
 
@@ -40,7 +47,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def route(self, method, path, body):
         srv = self.server
         srv.calls.append((method, path, body))
-        tid = path.rstrip("/").split("/")[-1]
+        parts = path.rstrip("/").split("/")
+        tid = parts[-1]
+        if path.startswith("/sqleditor/fetch/") and len(parts) == 5:
+            tid, fetch_all = parts[3], parts[4] == "1"
+            if not srv.fetch_all:
+                return self.reply(404, b"<html>Not Found</html>", "text/html")
+        else:
+            fetch_all = False
         authed = "pga4_session=ok" in (self.headers.get("Cookie") or "")
         if path == "/login":
             return self.html('<script>csrfToken": "tok123"</script>')
@@ -71,7 +85,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.json(404, {"success": 0, "errormsg": "Transaction ID not found in the session.",
                                    "info": "DATAGRID_TRANSACTION_REQUIRED"})
         if path.startswith("/sqleditor/query_tool/start/"):
-            tool.update(sql=body["sql"], polled=0)
+            tool.update(sql=body["sql"], polled=0, fetched=0)
             return self.json(200, {"success": 1, "data": {"status": True, "result": None}})
         if path.startswith("/sqleditor/poll/"):
             tool["polled"] += 1
@@ -81,8 +95,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.json(st, data)
         if path.startswith("/sqleditor/fetch/"):
             tool["fetched"] = tool.get("fetched", 0) + 1
-            rows = [[i] for i in range(1001, 1501)] if tool["fetched"] == 1 else None
-            return self.json(200, {"success": 1, "data": {"result": rows, "has_more_rows": False}})
+            if fetch_all:
+                rows = [[i] for i in range(1001, 1501)] if tool["fetched"] == 1 else []
+                return self.json(200, {"success": 1, "data": {"result": rows}})
+            rows = [[i] for i in range(1001, 1251)] if tool["fetched"] == 1 else [[i] for i in range(1251, 1501)] if tool["fetched"] == 2 else None
+            return self.json(200, {"success": 1, "data": {"result": rows, "has_more_rows": tool["fetched"] < 2}})
         return self.json(200, {"success": 1, "data": {}})
 
     def answer(self, tool):
@@ -104,13 +121,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                       result=[[7, 9007199254740993, 1.5, True, "-123.4500", "2024-02-29", "2026-10-21 12:00:00.5+05",
                                "123e4567-e89b-12d3-a456-426614174000", "{1,2}"]])
         if sql.startswith("select current_database()"):
-            return ok(colinfo=[col(f"c{i}", 25) for i in range(7)], result=[[tool["db"]] + SETTINGS])
+            return ok(colinfo=[col(f"c{i}", 25) for i in range(8)], result=[[tool["db"]] + SETTINGS])
         if sql.startswith("set "):
             return ok(colinfo=None, result="SET")
         if sql in ("begin", "commit", "rollback"):
             tool["tx"] = 2 if sql == "begin" else 0
             return ok(colinfo=None, result=sql.upper())
-        if sql.startswith("select 1"):
+        if sql.startswith("select two"):
             return ok(colinfo=[col("n", 23), col("a", 16), col("a-2", 25, display_name="a")],
                       result=[[1, True, None], [2, False, "x"]])
         if sql.startswith("select empty"):
@@ -142,8 +159,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
     def reply(self, status, body, ctype):
+        gz = "gzip" in (self.headers.get("Accept-Encoding") or "") and len(body) > 64
+        if gz:
+            body = gzip.compress(body)
         self.send_response(status)
         self.send_header("Content-Type", ctype)
+        if gz:
+            self.send_header("Content-Encoding", "gzip")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

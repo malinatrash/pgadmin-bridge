@@ -12,15 +12,16 @@ class Wire:
     """Server side of the PostgreSQL wire protocol v3 on a socket."""
 
     def __init__(self, sock):
-        self.sock, self.buf = sock, b""
+        self.sock, self.buf = sock, bytearray()
 
     def recv(self, n):
         while len(self.buf) < n:
-            chunk = self.sock.recv(65536)
+            chunk = self.sock.recv(max(65536, n - len(self.buf)))
             if not chunk:
                 raise ConnectionError("client closed the connection")
             self.buf += chunk
-        out, self.buf = self.buf[:n], self.buf[n:]
+        out = bytes(self.buf[:n])
+        del self.buf[:n]
         return out
 
     def message(self):
@@ -66,18 +67,21 @@ class Wire:
         self.send(b"T", body)
 
     def rows(self, batch, colinfo, fmts):
+        """Sends a DataRow per row of batch (any iterable, consumed as it goes), in writes of up to 500 rows."""
         oids = [column_oid(c.get("type_code")) for c in colinfo or []]
-        out = []
+        pack_i, out, null = struct.Struct("!i").pack, [], struct.pack("!i", -1)
         for values in batch:
-            body = struct.pack("!h", len(values))
+            parts = [struct.pack("!h", len(values))]
             for v, oid, fmt in zip(values, oids, fmts, strict=False):
                 b = None if v is None else encode(v, oid) if fmt else text(v)
-                body += struct.pack("!i", -1) if b is None else struct.pack("!i", len(b)) + b
-            out.append(b"D" + struct.pack("!i", len(body) + 4) + body)
+                parts.append(null if b is None else pack_i(len(b)) + b)
+            body = b"".join(parts)
+            out.append(b"D" + pack_i(len(body) + 4) + body)
             if len(out) >= 500:
                 self.sock.sendall(b"".join(out))
                 out = []
-        self.sock.sendall(b"".join(out))
+        if out:
+            self.sock.sendall(b"".join(out))
 
     def complete(self, tag):
         self.send(b"C", tag.encode() + NULL)

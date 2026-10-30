@@ -100,7 +100,7 @@ class Base(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.fake = Fake(SERVERS)
-        cfg = dict(config.DEFAULT, password="pw", timeout=300, idle=600, instances=[
+        cfg = dict(config.DEFAULT, password="pw", timeout=300, idle=600, lanes=2, instances=[
             {"name": cls.__name__, "url": cls.fake.url, "email": "admin@example.com", "password": "secret", "verify_tls": True}])
         cls.srv = proxy.Server(("127.0.0.1", 0), cfg, config.DATA)
         cls.port = cls.srv.server_address[1]

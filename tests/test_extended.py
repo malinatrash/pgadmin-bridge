@@ -96,7 +96,7 @@ class ExtendedTest(Base):
 
     def test_maxrows_suspends_portal(self):
         c = self.connect()
-        kinds, got = self.roundtrip(c, parse("", "select 1"), bind("", ""), describe("P", ""), execute("", 1), SYNC)
+        kinds, got = self.roundtrip(c, parse("", "select two"), bind("", ""), describe("P", ""), execute("", 1), SYNC)
         self.assertEqual(kinds, "12TDsZ")
         kinds, got = self.roundtrip(c, execute("", 1), SYNC)
         self.assertEqual(kinds, "DCZ")
@@ -109,7 +109,7 @@ class ExtendedTest(Base):
         self.assertEqual(c.err(got[2][1])["C"], "42P01")
         kinds, got = self.roundtrip(c, parse("", "echo $9"), bind("", ""), execute(""), SYNC)
         self.assertEqual((kinds, c.err(got[1][1])["M"]), ("1EZ", "there is no parameter $9"))
-        self.assertEqual(c.query("select 1")[0], "TDDCZ")
+        self.assertEqual(c.query("select two")[0], "TDDCZ")
         c.close()
 
     def test_empty_and_close(self):

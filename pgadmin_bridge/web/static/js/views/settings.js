@@ -9,6 +9,8 @@ import { busy } from "./shared.js";
 
 const TIMEOUTS = [[0, "Off"], [30, "30s"], [120, "2 min"], [600, "10 min"]];
 const IDLE = [[0, "Never"], [300, "5 min"], [600, "10 min"], [1800, "30 min"]];
+const LANES = [[1, "1"], [2, "2"], [4, "4"], [8, "8"]];
+const CACHE = [[0, "Off"], [30, "30s"], [60, "1 min"], [300, "5 min"]];
 let off = [];
 let bar = null;
 
@@ -31,12 +33,14 @@ function values(root) {
     read_only: form.read_only.checked,
     timeout: Math.max(0, parseInt(form.timeout.value, 10) || 0),
     idle: Math.max(0, parseInt(form.idle.value, 10) || 0),
+    lanes: Math.min(16, Math.max(1, parseInt(form.lanes.value, 10) || 1)),
+    cache: Math.max(0, parseInt(form.cache.value, 10) || 0),
   };
 }
 
 function saved() {
   const c = store.state.config;
-  return { password: c.password, read_only: c.read_only, timeout: c.timeout, idle: c.idle };
+  return { password: c.password, read_only: c.read_only, timeout: c.timeout, idle: c.idle, lanes: c.lanes, cache: c.cache };
 }
 
 function fill(root) {
@@ -46,6 +50,8 @@ function fill(root) {
   form.read_only.checked = c.read_only;
   form.timeout.value = c.timeout;
   form.idle.value = c.idle;
+  form.lanes.value = c.lanes;
+  form.cache.value = c.cache;
   sync(root);
 }
 
@@ -108,6 +114,15 @@ export default {
           ${setting("Release idle backend after", "Closes the Query Tool of a client that is silent and not in a transaction. The next query reopens it and replays the session's SET commands. Also used as idle_in_transaction_session_timeout.",
             html`<div class="input-wrap">${icon("clock", 15)}<input class="input" type="number" min="0" name="idle"><span class="suffix">sec</span></div>
               ${presets("idle", IDLE)}`)}
+        </section>
+        <section class="card">
+          <div class="card-head"><div><h2>Performance</h2><p>Fewer round trips to pgAdmin, more of them in parallel</p></div></div>
+          ${setting("Parallel pgAdmin sessions", "Logins the bridge keeps per pgAdmin instance. pgAdmin serializes requests within one login, so this is how many statements can run at the same time. Each one holds its own pgAdmin connections to a server.",
+            html`<div class="input-wrap">${icon("layers", 15)}<input class="input" type="number" min="1" max="16" name="lanes"></div>
+              ${presets("lanes", LANES)}`)}
+          ${setting("Catalog cache", "Keeps the results of read-only pg_catalog and information_schema queries for this long, shared by all clients. Cuts the introspection storm when an IDE connects. Off keeps every query live.",
+            html`<div class="input-wrap">${icon("zap", 15)}<input class="input" type="number" min="0" name="cache"><span class="suffix">sec</span></div>
+              ${presets("cache", CACHE)}`)}
         </section>
       </form>`);
 

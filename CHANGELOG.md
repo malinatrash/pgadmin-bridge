@@ -5,6 +5,33 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Far fewer and faster round trips to pgAdmin: one keep-alive HTTP(S) connection per login instead of a
+  new TCP + TLS handshake for every request, gzip-compressed answers, and the rest of a large result
+  fetched in one call (`/sqleditor/fetch/<id>/1`) where pgAdmin supports it, a page at a time otherwise.
+- A pool of pgAdmin logins per instance (**Parallel pgAdmin sessions**, default 4): pgAdmin serializes
+  the requests of one login, so statements from different clients now run in parallel instead of
+  queueing behind each other.
+- Rows are streamed to the client as pgAdmin hands them out, with the next chunk requested while the
+  current one is being sent; the simple protocol no longer buffers the whole result first.
+- Polling for a running statement adapts to how long the tool's statements usually take and never
+  sleeps longer than 500 ms, down from 2 s, so long queries return sooner.
+- `auto_commit` / `auto_rollback` are no longer set on every new backend; they are only switched on
+  when a backend turns out to run without autocommit.
+- Server trees of several pgAdmin instances are scanned in parallel.
+
+### Added
+
+- Local answers for what IDEs send constantly: keepalive `SELECT 1`, `select version()`, `SHOW` of the
+  settings reported at connect, and `SET application_name` / `client_encoding` / `extra_float_digits`.
+  They never reach pgAdmin and no longer wake a released backend, so an idle tab costs nothing.
+- **Catalog cache** (off by default): results of read-only `pg_catalog` / `information_schema` queries
+  are shared by all clients for the configured number of seconds, and identical in-flight queries are
+  coalesced into one. Tames the introspection storm when DataGrip or DBeaver connects.
+- A backend that pgAdmin lost while the client was idle is re-attached transparently when the next
+  statement had not started yet, instead of ending the client connection.
+
 ## [1.0.1] - 2026-10-25
 
 ### Fixed

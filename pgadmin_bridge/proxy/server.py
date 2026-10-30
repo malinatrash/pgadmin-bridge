@@ -3,6 +3,7 @@ import socketserver
 import threading
 import time
 
+from .cache import Cache
 from .registry import Registry
 from .session import Session
 
@@ -15,7 +16,7 @@ class Server(socketserver.ThreadingTCPServer):
 
     def __init__(self, addr, cfg, cookie_dir, advertise=None):
         super().__init__(addr, Session)
-        self.registry, self.conns, self.cfg = Registry(cookie_dir), {}, {}
+        self.registry, self.conns, self.cfg, self.cache = Registry(cookie_dir), {}, {}, Cache()
         self.advertise = advertise  # host:port clients use, when it differs from the listen address (Docker)
         self.reload(cfg)
         threading.Thread(target=self.reap, daemon=True).start()
@@ -23,7 +24,8 @@ class Server(socketserver.ThreadingTCPServer):
     def reload(self, cfg):
         """Applies a new config without a restart; open sessions keep their Query Tool."""
         self.cfg = cfg
-        self.registry.reload(cfg["instances"])
+        self.registry.reload(cfg["instances"], cfg.get("lanes", 4))
+        self.cache.clear()
 
     def setup(self):
         """SET statements run at the start of every backend."""
@@ -41,6 +43,7 @@ class Server(socketserver.ThreadingTCPServer):
         now = time.monotonic()
         return {
             "servers": self.registry.servers(),
+            "cache": {"entries": len(self.cache.entries), "hits": self.cache.hits, "misses": self.cache.misses},
             "connections": [{"key": f"{k[0]}:{k[1]}", "client": f"{c.client_address[0]}:{c.client_address[1]}",
                              "target": c.name, "application": c.application, "backend": bool(c.tool.tid),
                              "in_tx": c.tool.tx != b"I", "idle_s": int(now - c.last), "age_s": int(now - c.started),

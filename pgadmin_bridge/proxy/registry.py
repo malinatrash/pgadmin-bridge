@@ -1,4 +1,5 @@
 """pgAdmin clients for the configured instances and the servers their trees expose."""
+import threading
 import time
 
 from ..log import log
@@ -14,11 +15,12 @@ class Registry:
     def __init__(self, cookie_dir):
         # "never scanned" must be long ago even on a machine booted less than a minute ago (monotonic ~ uptime)
         self.cookie_dir, self.pgs, self.nodes, self.scanned = cookie_dir, {}, {}, NEVER
+        self.scanning = threading.RLock()  # one scan at a time; lookups that miss wait for a scan in progress
 
-    def reload(self, instances):
-        """Keeps the pgAdmin client (and its login) of unchanged instances; the tree is rescanned on next use."""
+    def reload(self, instances, lanes=4):
+        """Keeps the pgAdmin client (and its logins) of unchanged instances; the tree is rescanned on next use."""
         old = self.pgs
-        self.pgs = {i["name"]: old[i["name"]] if _same(old.get(i["name"]), i) else PgAdmin(i, self.cookie_dir)
+        self.pgs = {i["name"]: old[i["name"]] if _same(old.get(i["name"]), i, lanes) else PgAdmin(i, self.cookie_dir, lanes)
                     for i in instances}
         self.nodes, self.scanned = {}, NEVER
 
@@ -26,8 +28,11 @@ class Registry:
         """-> (pgAdmin client, server node); rescans the trees on a miss, at most once a minute."""
         key = user.lower()
         node = self.nodes.get(key)
-        if not node and time.monotonic() - self.scanned > 60:
-            node = self.scan().get(key)
+        if not node:
+            with self.scanning:
+                node = self.nodes.get(key)  # a scan that was running when we missed may have found it
+                if not node and time.monotonic() - self.scanned > 60:
+                    node = self.scan().get(key)
         if node == AMBIGUOUS:
             raise ApiError(f"'{user}' exists in several pgAdmin instances; use User = instance/server")
         if not node:
@@ -35,16 +40,32 @@ class Registry:
         return self.pgs[node["inst"]], node
 
     def scan(self):
-        self.scanned, self.nodes = time.monotonic(), {}
-        for name, pg in self.pgs.items():
+        """Walks the trees of all instances at the same time; -> the new lookup table."""
+        with self.scanning:
+            return self._scan()
+
+    def _scan(self):
+        self.scanned, found = time.monotonic(), {}
+
+        def walk(name, pg):
             try:
-                for s in pg.servers():
-                    node = dict(s, inst=name)
-                    self.nodes[f"{name}/{s['label']}".lower()] = node
-                    self.nodes[s["label"].lower()] = AMBIGUOUS if s["label"].lower() in self.nodes else node
+                found[name] = pg.servers()
             except ApiError as e:
                 log(f"[!] pgAdmin {name}: {e}")
-        return self.nodes
+
+        threads = [threading.Thread(target=walk, args=item, daemon=True) for item in self.pgs.items()]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        nodes = {}
+        for name in self.pgs:
+            for s in found.get(name, []):
+                node = dict(s, inst=name)
+                nodes[f"{name}/{s['label']}".lower()] = node
+                nodes[s["label"].lower()] = AMBIGUOUS if s["label"].lower() in nodes else node
+        self.nodes = nodes
+        return nodes
 
     def names(self):
         return ", ".join(sorted(k for k, n in self.nodes.items() if n != AMBIGUOUS and "/" in k))
@@ -57,5 +78,6 @@ class Registry:
                       key=lambda s: (s["instance"].lower(), s["server"].lower()))
 
 
-def _same(pg, inst):
-    return pg and (pg.base, pg.email, pg.password) == (inst["url"].rstrip("/"), inst["email"], inst["password"])
+def _same(pg, inst, lanes):
+    now = (inst["url"].rstrip("/"), inst["email"], inst["password"], lanes)
+    return pg and (pg.base, pg.email, pg.password, len(pg.lanes)) == now
